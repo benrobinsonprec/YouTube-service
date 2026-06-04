@@ -58,8 +58,9 @@ app.post('/upload', async (req, res) => {
       await axios.post(callback_url, { youtube_url: youtubeUrl, title });
     }
   } catch (err) {
-    const detail = err.response?.data || err.message;
-    console.error('Upload error:', JSON.stringify(detail));
+    const detail = err.errors || err.response?.data?.error?.errors || err.response?.data || err.message;
+    console.error('Upload error full:', JSON.stringify(detail, null, 2));
+    console.error('Upload error code:', err.code || err.status || err.response?.status);
     if (callback_url) {
       await axios.post(callback_url, { error: JSON.stringify(detail), title }).catch(() => {});
     }
