@@ -95,5 +95,13 @@ app.post('/upload', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received — keeping alive for active uploads...');
+  setTimeout(() => {
+    console.log('Shutdown complete');
+    process.exit(0);
+  }, 300000);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`YouTube service on port ${PORT}`));
