@@ -59,9 +59,21 @@ async function uploadVideo(videoUrl, title, description, tags) {
 
 app.post('/upload', async (req, res) => {
   console.log('Body received:', JSON.stringify(req.body));
-  const { video_url, title, description, tags, callback_url } = req.body;
+  let body = req.body;
+  if (!body.video_url && req.rawBody) {
+    const lines = req.rawBody.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length >= 2) {
+      body = {
+        video_url: lines[0],
+        title: lines[1],
+        callback_url: lines[2] || null
+      };
+      console.log('Parsed from lines:', JSON.stringify(body));
+    }
+  }
+  const { video_url, title, description, tags, callback_url } = body;
   if (!video_url || !title) {
-    return res.status(400).json({ error: 'Missing video_url or title', received: req.body });
+    return res.status(400).json({ error: 'Missing video_url or title', received: body });
   }
   res.json({ status: 'uploading', title });
 
