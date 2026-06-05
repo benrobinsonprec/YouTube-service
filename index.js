@@ -2,8 +2,20 @@ const express = require('express');
 const { google } = require('googleapis');
 const axios = require('axios');
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  let data = '';
+  req.on('data', chunk => { data += chunk; });
+  req.on('end', () => {
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('Raw body:', data.substring(0, 500));
+    req.rawBody = data;
+    try { req.body = JSON.parse(data); } catch(e) {
+      const params = new URLSearchParams(data);
+      req.body = Object.fromEntries(params);
+    }
+    next();
+  });
+});
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.YOUTUBE_CLIENT_ID,
