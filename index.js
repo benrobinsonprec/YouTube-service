@@ -3,6 +3,7 @@ const { google } = require('googleapis');
 const axios = require('axios');
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.YOUTUBE_CLIENT_ID,
