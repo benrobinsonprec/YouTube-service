@@ -58,9 +58,10 @@ async function uploadVideo(videoUrl, title, description, tags) {
 }
 
 app.post('/upload', async (req, res) => {
+  console.log('Body received:', JSON.stringify(req.body));
   const { video_url, title, description, tags, callback_url } = req.body;
   if (!video_url || !title) {
-    return res.status(400).json({ error: 'Missing video_url or title' });
+    return res.status(400).json({ error: 'Missing video_url or title', received: req.body });
   }
   res.json({ status: 'uploading', title });
 
