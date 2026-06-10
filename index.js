@@ -17,48 +17,76 @@ app.use((req, res, next) => {
   });
 });
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.YOUTUBE_CLIENT_ID,
-  process.env.YOUTUBE_CLIENT_SECRET,
-  'http://localhost'
-);
+let accessToken = null;
+let tokenExpiry = 0;
+
+async function getAccessToken() {
+  if (accessToken && Date.now() < tokenExpiry) {
+    console.log('Using cached access token');
+    return accessToken;
+  }
+  console.log('Refreshing access token...');
+  const res = await axios.post('https://oauth2.googleapis.com/token', {
+    client_id: process.env.YOUTUBE_CLIENT_ID,
+    client_secret: process.env.YOUTUBE_CLIENT_SECRET,
+    refresh_token: process.env.YOUTUBE_REFRESH_TOKEN,
+    grant_type: 'refresh_token'
+  });
+  accessToken = res.data.access_token;
+  tokenExpiry = Date.now() + ((res.data.expires_in - 60) * 1000);
+  console.log('Access token refreshed, expires in', res.data.expires_in, 'seconds');
+  return accessToken;
+}
 
 console.log('YouTube OAuth init:');
 console.log('  Client ID:', process.env.YOUTUBE_CLIENT_ID ? 'SET' : 'MISSING');
 console.log('  Client Secret:', process.env.YOUTUBE_CLIENT_SECRET ? 'SET' : 'MISSING');
 console.log('  Refresh Token:', process.env.YOUTUBE_REFRESH_TOKEN ? process.env.YOUTUBE_REFRESH_TOKEN.substring(0,20)+'...' : 'MISSING');
 
-oauth2Client.setCredentials({
-  refresh_token: process.env.YOUTUBE_REFRESH_TOKEN
-});
-
-const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-
 async function uploadVideo(videoUrl, title, description, tags) {
   console.log(`Downloading video from: ${videoUrl}`);
-  const response = await axios({ url: videoUrl, method: 'GET', responseType: 'stream' });
+  const videoResponse = await axios({ url: videoUrl, method: 'GET', responseType: 'arraybuffer' });
 
+  const token = await getAccessToken();
   console.log('Uploading to YouTube...');
-  const res = await youtube.videos.insert({
-    part: ['snippet', 'status'],
-    requestBody: {
-      snippet: {
-        title: title,
-        description: description,
-        tags: tags ? tags.split(',').map(t => t.trim()) : [],
-        categoryId: '28'
-      },
-      status: {
-        privacyStatus: 'private'
-      }
-    },
-    media: {
-      mimeType: 'video/mp4',
-      body: response.data
-    }
-  });
 
-  const videoId = res.data.id;
+  const metadata = {
+    snippet: {
+      title: title,
+      description: description,
+      tags: tags ? tags.split(',').map(t => t.trim()) : [],
+      categoryId: '28'
+    },
+    status: {
+      privacyStatus: 'private'
+    }
+  };
+
+  // Initiate resumable upload
+  const initRes = await axios.post('https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable',
+    metadata,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const uploadUrl = initRes.headers.location;
+  console.log('Resumable upload session created');
+
+  // Upload video file
+  const uploadRes = await axios.put(uploadUrl,
+    videoResponse.data,
+    {
+      headers: {
+        'Content-Type': 'video/mp4'
+      }
+    }
+  );
+
+  const videoId = uploadRes.data.id;
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
