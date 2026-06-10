@@ -63,31 +63,39 @@ async function uploadVideo(videoUrl, title, description, tags) {
   };
 
   // Initiate resumable upload
-  const initRes = await axios.post('https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable',
-    metadata,
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+  console.log('Initiating resumable upload...');
+  try {
+    const initRes = await axios.post('https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable',
+      metadata,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       }
-    }
-  );
+    );
 
-  const uploadUrl = initRes.headers.location;
-  console.log('Resumable upload session created');
+    const uploadUrl = initRes.headers.location;
+    console.log('Resumable session created, upload URL:', uploadUrl.substring(0, 80));
 
-  // Upload video file
-  const uploadRes = await axios.put(uploadUrl,
-    videoResponse.data,
-    {
-      headers: {
-        'Content-Type': 'video/mp4'
+    // Upload video file
+    console.log('Uploading video file...');
+    const uploadRes = await axios.put(uploadUrl,
+      videoResponse.data,
+      {
+        headers: {
+          'Content-Type': 'video/mp4'
+        }
       }
-    }
-  );
+    );
 
-  const videoId = uploadRes.data.id;
-  return `https://www.youtube.com/watch?v=${videoId}`;
+    const videoId = uploadRes.data.id;
+    console.log('Upload complete, video ID:', videoId);
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  } catch (err) {
+    console.error('Upload step failed:', err.response?.status, err.response?.data || err.message);
+    throw err;
+  }
 }
 
 app.post('/upload', async (req, res) => {
