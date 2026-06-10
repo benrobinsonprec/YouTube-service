@@ -23,6 +23,11 @@ const oauth2Client = new google.auth.OAuth2(
   'http://localhost'
 );
 
+console.log('YouTube OAuth init:');
+console.log('  Client ID:', process.env.YOUTUBE_CLIENT_ID ? 'SET' : 'MISSING');
+console.log('  Client Secret:', process.env.YOUTUBE_CLIENT_SECRET ? 'SET' : 'MISSING');
+console.log('  Refresh Token:', process.env.YOUTUBE_REFRESH_TOKEN ? process.env.YOUTUBE_REFRESH_TOKEN.substring(0,20)+'...' : 'MISSING');
+
 oauth2Client.setCredentials({
   refresh_token: process.env.YOUTUBE_REFRESH_TOKEN
 });
