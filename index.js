@@ -26,16 +26,21 @@ async function getAccessToken() {
     return accessToken;
   }
   console.log('Refreshing access token...');
-  const res = await axios.post('https://oauth2.googleapis.com/token', {
-    client_id: process.env.YOUTUBE_CLIENT_ID,
-    client_secret: process.env.YOUTUBE_CLIENT_SECRET,
-    refresh_token: process.env.YOUTUBE_REFRESH_TOKEN,
-    grant_type: 'refresh_token'
-  });
-  accessToken = res.data.access_token;
-  tokenExpiry = Date.now() + ((res.data.expires_in - 60) * 1000);
-  console.log('Access token refreshed, expires in', res.data.expires_in, 'seconds');
-  return accessToken;
+  try {
+    const res = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: process.env.YOUTUBE_CLIENT_ID,
+      client_secret: process.env.YOUTUBE_CLIENT_SECRET,
+      refresh_token: process.env.YOUTUBE_REFRESH_TOKEN,
+      grant_type: 'refresh_token'
+    });
+    accessToken = res.data.access_token;
+    tokenExpiry = Date.now() + ((res.data.expires_in - 60) * 1000);
+    console.log('Access token refreshed, expires in', res.data.expires_in, 'seconds');
+    return accessToken;
+  } catch (err) {
+    console.error('Token refresh failed:', err.response?.status, err.response?.data?.error, err.response?.data?.error_description);
+    throw err;
+  }
 }
 
 console.log('YouTube OAuth init:');
